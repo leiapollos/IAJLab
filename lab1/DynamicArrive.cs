@@ -1,31 +1,28 @@
-﻿using UnityEngine;
-using System.Collections;
-
-namespace Assets.Scripts.IAJ.Unity.Movement.DynamicMovement
+﻿namespace Assets.Scripts.IAJ.Unity.Movement.DynamicMovement
 {
     public class DynamicArrive : DynamicVelocityMatch
     {
 
-        public float MaxSpeed   { get; set; }
+        public float MaxSpeed { get; set; }
         public float StopRadius { get; set; }
         public float SlowRadius { get; set; }
 
-        public KinematicData DesiredTarget { get; set; } 
+        public KinematicData DestinationTarget { get; set; }
 
         public DynamicArrive()
         {
-            this.MaxSpeed   = 40.0f;
+            this.MaxSpeed = 40.0f;
             this.StopRadius = 10.0f;
             this.SlowRadius = 40.0f;
-            this.Output     = new MovementOutput();
+            this.Output = new MovementOutput();
+
+            base.Target = new KinematicData();
         }
 
         public override MovementOutput GetMovement()
         {
-            base.Target = new KinematicData(this.DesiredTarget, this.DesiredTarget.velocity);
-
             Vector3 direction = this.DesiredTarget.Position - this.Character.Position;
-            float distance    = direction.magnitude;
+            float distance = direction.magnitude;
             float desiredSpeed;
 
             if (distance < this.StopRadius) desiredSpeed = 0;
