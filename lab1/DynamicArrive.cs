@@ -1,4 +1,6 @@
-﻿namespace Assets.Scripts.IAJ.Unity.Movement.DynamicMovement
+﻿using UnityEngine;
+
+namespace Assets.Scripts.IAJ.Unity.Movement.DynamicMovement
 {
     public class DynamicArrive : DynamicVelocityMatch
     {
@@ -21,7 +23,7 @@
 
         public override MovementOutput GetMovement()
         {
-            Vector3 direction = this.DesiredTarget.Position - this.Character.Position;
+            Vector3 direction = this.DestinationTarget.Position - this.Character.Position;
             float distance = direction.magnitude;
             float desiredSpeed;
 
