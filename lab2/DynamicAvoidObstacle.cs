@@ -17,7 +17,7 @@ namespace Assets.Scripts.IAJ.Unity.Movement.DynamicMovement
 
         public override MovementOutput GetMovement()
         {
-            Vector3 rayVector = this.Character.Position.normalized;
+            Vector3 rayVector = this.Character.velocity.normalized;
             RaycastHit info;
 
             bool collision = this.Collider.Raycast(new Ray(this.Character.Position, rayVector), out info, this.MaxLookAhead);
