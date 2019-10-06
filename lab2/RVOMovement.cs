@@ -33,10 +33,10 @@ namespace Assets.Scripts.IAJ.Unity.Movement.VO
             this.Characters = movingCharacters;
             this.Obstacles = obstacles;
             base.Target = new KinematicData();
-            this.IgnoreDistance = 12.0f;
-            this.Weight = 8.0f;
-            this.CharacterSize = 2.0f;
-            this.ObjectSize = 6.0f;
+            this.IgnoreDistance = 13.0f;
+            this.Weight = 55.0f;
+            this.CharacterSize = 1.5f;
+            this.ObjectSize = 3.0f;
         }
 
         public override MovementOutput GetMovement()
@@ -53,14 +53,13 @@ namespace Assets.Scripts.IAJ.Unity.Movement.VO
             List<Vector3> samples = new List<Vector3>();
 
             samples.Add(desiredVelocity);
-            for(int i = 0; i< 100; i++)
+            for(int i = 0; i< 300; i++)
             {
                 float angle = UnityEngine.Random.Range(0, (float)(2 * Math.PI));
-                float magnitude = UnityEngine.Random.Range(0, MaxSpeed/2);
+                float magnitude = UnityEngine.Random.Range(0, MaxSpeed);
                 Vector3 velocitySample = MathHelper.ConvertOrientationToVector(angle) * magnitude;
                 samples.Add(velocitySample);
             }
-            Vector3 vel = getBestSample(desiredVelocity, samples);
             base.Target.velocity = getBestSample(desiredVelocity, samples);
             return base.GetMovement();
         }
@@ -73,30 +72,8 @@ namespace Assets.Scripts.IAJ.Unity.Movement.VO
             foreach(Vector3 sample in samples)
             {
                 float distancePenalty = (desiredVelocity - sample).magnitude;
-                float maximumTimePenalty = 0;
-                foreach(KinematicData b in this.Characters)
-                {
-                    Vector3 deltaP = b.Position - this.Character.Position;
-                    if (deltaP.magnitude > IgnoreDistance)
-                        continue;
-
-                    if((this.Character.Position - b.Position).magnitude == 0) //Make sure we are not testing each charatcer with itself
-                        continue;
-
-                    Vector3 rayVector = 2 * sample - this.Character.velocity - b.velocity;
-                    float tc = MathHelper.TimeToCollisionBetweenRayAndCircle(this.Character.Position, rayVector, b.Position, this.CharacterSize*2);
-                    float timePenalty = 0.0f;
-                    if (tc > 0) //future collision
-                        timePenalty = Weight / tc;
-                    else if (tc == 0) //immediate collision
-                        timePenalty = float.PositiveInfinity;
-                    else //no collision
-                        timePenalty = 0;
-
-                    if (timePenalty > maximumTimePenalty) //opportunity for optimization here (teacher)
-                        maximumTimePenalty = timePenalty;
-                }
-
+                float maximumTimePenalty = 0.0f;
+                float timePenalty = 0.0f;
                 foreach (StaticData b in this.Obstacles)
                 {
                     Vector3 deltaP = b.Position - this.Character.Position;
@@ -104,7 +81,7 @@ namespace Assets.Scripts.IAJ.Unity.Movement.VO
                         continue;
                     Vector3 rayVector = 2 * sample - this.Character.velocity;
                     float tc = MathHelper.TimeToCollisionBetweenRayAndCircle(this.Character.Position, rayVector, b.Position, this.ObjectSize);
-                    float timePenalty = 0.0f;
+                    timePenalty = 0.0f;
                     if (tc > 0) //future collision
                         timePenalty = Weight / tc;
                     else if (tc == 0) //immediate collision
@@ -115,12 +92,38 @@ namespace Assets.Scripts.IAJ.Unity.Movement.VO
                     if (timePenalty > maximumTimePenalty) //opportunity for optimization here (teacher)
                         maximumTimePenalty = timePenalty;
                 }
+
+                foreach (KinematicData b in this.Characters)
+                {
+                    Vector3 deltaP = b.Position - this.Character.Position;
+                    if (deltaP.magnitude > IgnoreDistance)
+                        continue;
+
+                    if ((this.Character.Position - b.Position).magnitude == 0) //Make sure we are not testing each charatcer with itself
+                        continue;
+
+                    Vector3 rayVector = 2 * sample - this.Character.velocity - b.velocity;
+                    float tc = MathHelper.TimeToCollisionBetweenRayAndCircle(this.Character.Position, rayVector, b.Position, this.CharacterSize * 2);
+                    timePenalty = 0.0f;
+                    if (tc > 0) //future collision
+                        timePenalty = Weight / tc;
+                    else if (tc == 0) //immediate collision
+                        timePenalty = float.PositiveInfinity;
+                    else //no collision
+                        timePenalty = 0.0f;
+
+                    if (timePenalty > maximumTimePenalty) //opportunity for optimization here (teacher)
+                        maximumTimePenalty = timePenalty;
+                }
+
                 float penalty = distancePenalty + maximumTimePenalty;
 
                 if (penalty < minimumPenalty)
                 { //opportunity for optimization here (teacher)
                     minimumPenalty = penalty;
                     bestSample = sample;
+                    if (penalty == 0)
+                        return bestSample;
                 }
             }
             return bestSample;
