@@ -77,6 +77,8 @@ namespace Assets.Scripts.IAJ.Unity.Movement.VO
         public Vector3 GetBestSample(Vector3 desiredVelocity, List<Vector3> samples)
         {
             Vector3 bestSample = Vector3.zero;
+            Vector3 charPos = this.Character.Position;
+            Vector3 charVel = this.Character.velocity;
             float minimumPenalty = float.PositiveInfinity;
 
             foreach (Vector3 sample in samples)
@@ -90,13 +92,14 @@ namespace Assets.Scripts.IAJ.Unity.Movement.VO
 
                 foreach (KinematicData ch in this.Characters)
                 {
-                    Vector3 deltaP = ch.Position - this.Character.Position;
+                    Vector3 otherPos = ch.Position;
+                    Vector3 deltaP = otherPos - charPos;
 
                     if (deltaP.sqrMagnitude > this.IgnoreDistance * this.IgnoreDistance)
                         continue;
 
-                    Vector3 rayVector = 2 * sample - this.Character.velocity - ch.velocity;
-                    float timeToCollision = MathHelper.TimeToCollisionBetweenRayAndCircle(this.Character.Position, rayVector, ch.Position, this.CharacterSize * 2);
+                    Vector3 rayVector = 2 * sample - charVel - ch.velocity;
+                    float timeToCollision = MathHelper.TimeToCollisionBetweenRayAndCircle(charPos, rayVector, otherPos, this.CharacterSize * 2);
 
                     float timePenalty;
                     if (timeToCollision > TTC_EPSILON)
@@ -112,13 +115,14 @@ namespace Assets.Scripts.IAJ.Unity.Movement.VO
 
                 foreach (StaticData obs in this.Obstacles)
                 {
-                    Vector3 deltaP = obs.Position - this.Character.Position;
+                    Vector3 obsPos = obs.Position;
+                    Vector3 deltaP = obsPos - charPos;
 
                     if (deltaP.sqrMagnitude > this.IgnoreDistance * this.IgnoreDistance)
                         continue;
 
                     Vector3 rayVector = 2 * sample - this.Character.velocity;
-                    float timeToCollision = MathHelper.TimeToCollisionBetweenRayAndCircle(this.Character.Position, rayVector, obs.Position, this.ObstacleSize);
+                    float timeToCollision = MathHelper.TimeToCollisionBetweenRayAndCircle(charPos, rayVector, obsPos, this.ObstacleSize);
 
                     float timePenalty;
                     if (timeToCollision > TTC_EPSILON)
