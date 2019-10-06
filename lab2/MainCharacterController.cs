@@ -78,16 +78,16 @@ public class MainCharacterController : MonoBehaviour {
             if (otherCharacter != this.character)
             {
                 //TODO: add your AvoidCharacter movement here
-                //var avoidCharacter = new DynamicAvoidCharacter(otherCharacter.KinematicData)
-                //{
-                //    Character = this.character.KinematicData,
-                //    MaxAcceleration = MAX_ACCELERATION,
-                //    AvoidMargin = AVOID_MARGIN,
-                //    DebugColor = Color.cyan
-                //};
+                var avoidCharacter = new DynamicAvoidCharacter(otherCharacter.KinematicData)
+                {
+                    Character = this.character.KinematicData,
+                    MaxAcceleration = MAX_ACCELERATION,
+                    AvoidMargin = AVOID_MARGIN,
+                    DebugColor = Color.cyan
+                };
 
-                //this.blendedMovement.Movements.Add(new MovementWithWeight(avoidCharacter, 2.0f));
-                //this.priorityMovement.Movements.Add(avoidCharacter);
+                this.blendedMovement.Movements.Add(new MovementWithWeight(avoidCharacter, 2.0f));
+                this.priorityMovement.Movements.Add(avoidCharacter);
             }
         }
 
