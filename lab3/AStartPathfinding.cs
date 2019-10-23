@@ -61,6 +61,7 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
             this.TotalExploredNodes = 0;
             this.TotalProcessingTime = 0.0f;
             this.MaxOpenNodes = 0;
+            this.NodesPerFrame = 10;
 
             var initialNode = new NodeRecord
             {
@@ -79,38 +80,43 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
         protected virtual void ProcessChildNode(NodeRecord parentNode, NavigationGraphEdge connectionEdge, int edgeIndex)
         {
             //this is where you process a child node 
-            var childNode = GenerateChildNodeRecord(parentNode, connectionEdge);
-            var openNode = Open.SearchInOpen(childNode);
+            var childNode  = GenerateChildNodeRecord(parentNode, connectionEdge);
+            var openNode   = Open.SearchInOpen(childNode);
             var closedNode = Closed.SearchInClosed(childNode);
+
             if (openNode == null && closedNode == null)
                 Open.AddToOpen(childNode);
-            else if(openNode != null)
-                if (openNode.fValue > childNode.fValue)
-                    Open.Replace(openNode, childNode);
-            else if(closedNode!=null)
-                if (closedNode.fValue > childNode.fValue)
-                {
-                    Closed.RemoveFromClosed(childNode);
-                    Open.AddToOpen(childNode);
-                }
+            else if (openNode != null && openNode.fValue > childNode.fValue)
+                Open.Replace(openNode, childNode);
+            else if (closedNode != null && closedNode.fValue > childNode.fValue)
+            {
+                Closed.RemoveFromClosed(childNode);
+                Open.AddToOpen(childNode);
+            }
+
         }
 
         public bool Search(out GlobalPath solution, bool returnPartialSolution = false)
         {
             NodeRecord currentNode = Open.GetBestAndRemove();
+
             if (currentNode.node == this.GoalNode)
             {
                 solution = CalculateSolution(currentNode, returnPartialSolution);
                 return true;
             }
             Closed.AddToClosed(currentNode);
+            this.TotalExploredNodes++;
 
             var outConnections = currentNode.node.OutEdgeCount;
             for (int i = 0; i < outConnections; i++)
-            {
                 this.ProcessChildNode(currentNode, currentNode.node.EdgeOut(i), i);
-            }
-            solution = null;
+
+            if (this.TotalExploredNodes % this.NodesPerFrame == 0 && returnPartialSolution)
+                solution = CalculateSolution(currentNode, returnPartialSolution);
+            else 
+                solution = null;
+
             return false;
         }
 
@@ -158,7 +164,7 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
             };
             var currentNode = node;
 
-            path.PathPositions.Add(this.GoalPosition);
+            path.PathPositions.Add(node.node.Position);
 
             //I need to remove the first Node and the last Node because they correspond to the dummy first and last Polygons that were created by the initialization.
             //And we don't want to be forced to go to the center of the initial polygon before starting to move towards my destination.
