@@ -62,7 +62,6 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
             this.TotalExploredNodes = 0;
             this.TotalProcessingTime = 0.0f;
             this.MaxOpenNodes = 0;
-            this.NodesPerFrame = uint.MaxValue;
 
             var initialNode = new NodeRecord
             {
@@ -73,7 +72,7 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
 
             initialNode.fValue = AStarPathfinding.F(initialNode);
 
-            this.Open.Initialize(); 
+            this.Open.Initialize();
             this.Open.AddToOpen(initialNode);
             this.Closed.Initialize();
         }
@@ -81,8 +80,8 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
         protected virtual void ProcessChildNode(NodeRecord parentNode, NavigationGraphEdge connectionEdge, int edgeIndex)
         {
             //this is where you process a child node 
-            var childNode  = GenerateChildNodeRecord(parentNode, connectionEdge);
-            var openNode   = Open.SearchInOpen(childNode);
+            var childNode = GenerateChildNodeRecord(parentNode, connectionEdge);
+            var openNode = Open.SearchInOpen(childNode);
             var closedNode = Closed.SearchInClosed(childNode);
 
             if (openNode == null && closedNode == null)
@@ -95,14 +94,14 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
             else if (openNode != null)
                 if (openNode.fValue > childNode.fValue || (MathHelper.Truncate(openNode.fValue) == MathHelper.Truncate(childNode.fValue) && openNode.hValue > childNode.hValue))
                     Open.Replace(openNode, childNode);
-            else if (closedNode != null && closedNode.fValue > childNode.fValue)
-            {
-                Closed.RemoveFromClosed(childNode);
-                Open.AddToOpen(childNode);
+                else if (closedNode != null && closedNode.fValue > childNode.fValue)
+                {
+                    Closed.RemoveFromClosed(childNode);
+                    Open.AddToOpen(childNode);
 
-                if (this.MaxOpenNodes < this.Open.CountOpen())
-                    this.MaxOpenNodes = this.Open.CountOpen();
-            }
+                    if (this.MaxOpenNodes < this.Open.CountOpen())
+                        this.MaxOpenNodes = this.Open.CountOpen();
+                }
 
         }
 
@@ -132,8 +131,10 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
             }
 
             if (returnPartialSolution)
+            {
                 solution = CalculateSolution(this.Open.PeekBest(), returnPartialSolution);
-            else 
+            }
+            else
                 solution = null;
 
             this.TotalProcessingTime += Time.realtimeSinceStartup - start;
@@ -155,7 +156,7 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
 
             if (this.GoalNode != null)
             {
-                ((NavMeshPoly)this.GoalNode).RemoveConnectedPoly();    
+                ((NavMeshPoly)this.GoalNode).RemoveConnectedPoly();
             }
         }
 
@@ -166,7 +167,7 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
             {
                 node = childNode,
                 parent = parent,
-                gValue = parent.gValue + (childNode.LocalPosition-parent.node.LocalPosition).magnitude,
+                gValue = parent.gValue + (childNode.LocalPosition - parent.node.LocalPosition).magnitude,
                 hValue = this.Heuristic.H(childNode, this.GoalNode)
             };
 
@@ -194,7 +195,7 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
             {
                 currentNode = currentNode.parent;
             }
-            
+
             while (currentNode.parent != null)
             {
                 path.PathNodes.Add(currentNode.node); //we need to reverse the list because this operator add elements to the end of the list
@@ -206,13 +207,23 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding
 
             path.PathNodes.Reverse();
             path.PathPositions.Reverse();
+
+            Vector3 previous = path.PathPositions[0];
+            foreach(Vector3 current in path.PathPositions){
+                if (previous.Equals(current))
+                    continue;
+
+                path.LocalPaths.Add(new LineSegmentPath(previous, current));
+
+                previous = current;
+            }
             return path;
 
         }
 
         public static float F(NodeRecord node)
         {
-            return F(node.gValue,node.hValue);
+            return F(node.gValue, node.hValue);
         }
 
         public static float F(float g, float h)

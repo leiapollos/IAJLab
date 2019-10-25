@@ -10,27 +10,28 @@ using Assets.Scripts.IAJ.Unity.Pathfinding.DataStructures;
 using Assets.Scripts.IAJ.Unity.Pathfinding.DataStructures.HPStructures;
 using Assets.Scripts.IAJ.Unity.Movement.DynamicMovement;
 
-public class PathfindingManager : MonoBehaviour {
+public class PathfindingManager : MonoBehaviour
+{
 
-	//public fields to be set in Unity Editor
-	public GameObject endDebugSphere;
+    //public fields to be set in Unity Editor
+    public GameObject endDebugSphere;
     public GameObject startDebugSphere;
-	public Camera camera;
+    public Camera camera;
     public GameObject p1;
     public GameObject p2;
     public GameObject p3;
     public GameObject p4;
     public GameObject p5;
     public GameObject p6;
-    
+
     private DynamicCharacter character;
 
-	//private fields for internal use only
-	private Vector3 startPosition;
-	private Vector3 endPosition;
-	private NavMeshPathGraph navMesh;
+    //private fields for internal use only
+    private Vector3 startPosition;
+    private Vector3 endPosition;
+    private NavMeshPathGraph navMesh;
     private int currentClickNumber;
-    
+
     private GlobalPath currentSolution;
     private bool draw;
 
@@ -44,12 +45,12 @@ public class PathfindingManager : MonoBehaviour {
 
         this.character = new DynamicCharacter(startDebugSphere);
         this.AStarPathFinding = pathfindingAlgorithm;
-        this.AStarPathFinding.NodesPerFrame = 200;
+        this.AStarPathFinding.NodesPerFrame = 10;
     }
 
-	// Use this for initialization
-	void Awake ()
-	{
+    // Use this for initialization
+    void Awake()
+    {
         this.currentClickNumber = 1;
 
         //this.Initialize(NavigationManager.Instance.NavMeshGraphs[0], new AStarPathfinding(NavigationManager.Instance.NavMeshGraphs[0], new NodePriorityHeap(), new HashMap(), new EuclideanDistanceHeuristic()));
@@ -58,15 +59,15 @@ public class PathfindingManager : MonoBehaviour {
     }
 
     // Update is called once per frame
-    void Update () 
+    void Update()
     {
-		Vector3 position;
+        Vector3 position;
 
-		if (Input.GetMouseButtonDown(0)) 
-		{
-			//if there is a valid position
-			if(this.MouseClickPosition(out position))
-			{
+        if (Input.GetMouseButtonDown(0))
+        {
+            //if there is a valid position
+            if (this.MouseClickPosition(out position))
+            {
                 //if this is the first click we're setting the start point
                 if (this.currentClickNumber == 1)
                 {
@@ -92,9 +93,9 @@ public class PathfindingManager : MonoBehaviour {
                     //initialize the search algorithm
                     this.AStarPathFinding.InitializePathfindingSearch(this.character.KinematicData.Position, this.endPosition);
                 }
-			}
-		}
-        else if(Input.GetKeyDown(KeyCode.Alpha1))
+            }
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha1))
         {
             this.InitializePathFinding(this.p5.transform.localPosition, this.p6.transform.localPosition);
         }
@@ -117,28 +118,27 @@ public class PathfindingManager : MonoBehaviour {
 
         //call the pathfinding method if the user specified a new goal
         if (this.AStarPathFinding.InProgress)
-	    {
-	        var finished = this.AStarPathFinding.Search(out this.currentSolution, true);
-            if(finished)
+        {
+            var finished = this.AStarPathFinding.Search(out this.currentSolution, true);
+            if (finished)
             {
                 this.AStarPathFinding.InProgress = false;
                 this.startPosition = this.character.KinematicData.Position;
                 this.character.Movement = new DynamicFollowPath(this.character.KinematicData, this.currentSolution);
             }
-	    }
-
+        }
         this.character.Update();
-	}
+    }
 
     public void OnGUI()
     {
         if (this.currentSolution != null)
         {
-            var time = this.AStarPathFinding.TotalProcessingTime*1000;
+            var time = this.AStarPathFinding.TotalProcessingTime * 1000;
             float timePerNode;
             if (this.AStarPathFinding.TotalExploredNodes > 0)
             {
-                timePerNode = time/this.AStarPathFinding.TotalExploredNodes;
+                timePerNode = time / this.AStarPathFinding.TotalExploredNodes;
             }
             else
             {
@@ -150,7 +150,7 @@ public class PathfindingManager : MonoBehaviour {
                        + "\nTime per Node (ms):" + timePerNode.ToString("F4");
 
             GUI.contentColor = Color.black;
-            GUI.Label(new Rect(10,10,300,200),text);
+            GUI.Label(new Rect(10, 10, 300, 200), text);
         }
     }
 
@@ -194,32 +194,32 @@ public class PathfindingManager : MonoBehaviour {
             }
 
             Gizmos.color = Color.magenta;
-            if (this.character.Movement != null)
-                Gizmos.DrawSphere(this.character.Movement.Target.Position, 1.0f);
+           // if (this.character.Movement != null)
+             //   Gizmos.DrawSphere(this.character.Movement.Target.Position, 3.0f);
         }
     }
 
-	private bool MouseClickPosition(out Vector3 position)
-	{
-		RaycastHit hit;
+    private bool MouseClickPosition(out Vector3 position)
+    {
+        RaycastHit hit;
 
-		var ray = this.camera.ScreenPointToRay (Input.mousePosition);
-		//test intersection with objects in the scene
-		if (Physics.Raycast (ray, out hit)) 
-		{
-			//if there is a collision, we will get the collision point
-			position = hit.point;
-			return true;
-		}
+        var ray = this.camera.ScreenPointToRay(Input.mousePosition);
+        //test intersection with objects in the scene
+        if (Physics.Raycast(ray, out hit))
+        {
+            //if there is a collision, we will get the collision point
+            position = hit.point;
+            return true;
+        }
 
-		position = Vector3.zero;
-		//if not the point is not valid
-		return false;
-	}
+        position = Vector3.zero;
+        //if not the point is not valid
+        return false;
+    }
 
     private void InitializePathFinding(Vector3 p1, Vector3 p2)
     {
-       
+
         //show the start sphere, hide the end one
         //this is just a small adjustment to better see the debug sphere
         this.startDebugSphere.transform.position = p1 + Vector3.up;

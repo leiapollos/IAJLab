@@ -29,10 +29,14 @@ namespace Assets.Scripts.IAJ.Unity.Movement.DynamicMovement
         public override MovementOutput GetMovement()
         {
             if (this.Path.PathEnd(this.Param))
+            {
+                this.Character.velocity = Vector3.zero;
                 return new MovementOutput();
+            }
 
             this.Param = this.Path.GetParam(this.Character.Position, this.Param);
-            this.Target.Position = this.Path.GetPosition(this.Param);
+            this.DestinationTarget = new KinematicData();
+            this.DestinationTarget.Position = this.Path.GetPosition(this.Param);
 
             return base.GetMovement();
         }
