@@ -33,12 +33,14 @@ namespace Assets.Scripts.IAJ.Unity.Pathfinding.Path
         {
             int segment = (int)Math.Truncate(param);
 
-            return this.LocalPaths[segment].GetPosition(param);
+            return (this.PathEnd(param) ? this.LocalPaths[this.LocalPaths.Count - 1].GetPosition(1.0f) : this.LocalPaths[segment].GetPosition(param));
         }
 
         public override bool PathEnd(float param)
         {
-            return param > (this.LocalPaths.Count - 1);
+            int segment = (int)Math.Truncate(param);
+
+            return param >= this.LocalPaths.Count || (segment == (this.LocalPaths.Count - 1) && this.LocalPaths[segment].PathEnd(param));
         }
     }
 }
