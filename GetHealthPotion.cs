@@ -39,10 +39,8 @@ namespace Assets.Scripts.IAJ.Unity.DecisionMaking.ForwardModel.ForwardModelActio
         {
             base.ApplyActionEffects(worldModel);
 
-            var goalValue = worldModel.GetGoalValue(AutonomousCharacter.SURVIVE_GOAL);
-            worldModel.SetGoalValue(AutonomousCharacter.GET_RICH_GOAL, goalValue - 5.0f);
+            worldModel.SetGoalValue(AutonomousCharacter.SURVIVE_GOA, 0.0f);
 
-            var health = (int)worldModel.GetProperty(Properties.HP);
             worldModel.SetProperty(Properties.HP, Properties.MAXHP);
 
             //disables the target object so that it can't be reused again
