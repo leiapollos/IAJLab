@@ -17,6 +17,9 @@ namespace Assets.Scripts.IAJ.Unity.DecisionMaking.MCTS
         public int MaxPlayoutDepthReached { get; private set; }
         public int MaxSelectionDepthReached { get; private set; }
         public float TotalProcessingTime { get; private set; }
+        public int Runs { get; set; }
+        public int CurrentMCTS { get; set; }
+        public int MaxPlayouts { get; set; }
         public MCTSNode BestFirstChild { get; set; }
         public List<Action> BestActionSequence { get; private set; }
 
@@ -27,16 +30,20 @@ namespace Assets.Scripts.IAJ.Unity.DecisionMaking.MCTS
 
         protected CurrentStateWorldModel CurrentStateWorldModel { get; set; }
         protected MCTSNode InitialNode { get; set; }
+        protected MCTSNode[] InitialNodes { get; set; }
         protected System.Random RandomGenerator { get; set; }
-        
-        
+
+
 
         public MCTS(CurrentStateWorldModel currentStateWorldModel)
         {
             this.InProgress = false;
             this.CurrentStateWorldModel = currentStateWorldModel;
             this.MaxIterations = 1000;
-            this.MaxIterationsProcessedPerFrame = 10;
+            this.MaxIterationsProcessedPerFrame = 100;
+            this.Runs = 5;
+            this.CurrentMCTS = 0;
+            this.MaxPlayouts = 5;
             this.RandomGenerator = new System.Random();
         }
 
@@ -48,13 +55,24 @@ namespace Assets.Scripts.IAJ.Unity.DecisionMaking.MCTS
             this.CurrentIterations = 0;
             this.CurrentIterationsInFrame = 0;
             this.TotalProcessingTime = 0.0f;
+            this.CurrentMCTS = 0;
             this.CurrentStateWorldModel.Initialize();
-            this.InitialNode = new MCTSNode(this.CurrentStateWorldModel)
+            //this.InitialNode = new MCTSNode(this.CurrentStateWorldModel)
+            //{
+            //    Action = null,
+            //    Parent = null,
+            //    PlayerID = 0
+            //};
+            this.InitialNodes = new MCTSNode[this.Runs];
+            for (int i = 0; i < this.Runs; i++)
             {
-                Action = null,
-                Parent = null,
-                PlayerID = 0
-            };
+                InitialNodes[i] = new MCTSNode(this.CurrentStateWorldModel)
+                {
+                    Action = null,
+                    Parent = null,
+                    PlayerID = 0
+                };
+            }
             this.InProgress = true;
             this.BestFirstChild = null;
             this.BestActionSequence = new List<Action>();
@@ -69,16 +87,29 @@ namespace Assets.Scripts.IAJ.Unity.DecisionMaking.MCTS
 
             this.CurrentIterationsInFrame = 0;
 
-            while (this.CurrentIterations < this.MaxIterations)     
+            while (this.CurrentIterations < this.MaxIterations)
             {
-                selectedNode = Selection(this.InitialNode);
-                reward = Playout(selectedNode.State);                       
+                if (this.CurrentIterationsInFrame > this.MaxIterationsProcessedPerFrame)
+                {
+                    TotalProcessingTime += Time.realtimeSinceStartup - startTime;
+                    return null;
+                }
+
+                //selectedNode = Selection(this.InitialNode);
+                selectedNode = Selection(this.InitialNodes[this.CurrentMCTS]);
+                reward = Playout(selectedNode.State);
                 Backpropagate(selectedNode, reward);
                 this.CurrentIterations++;
+                this.CurrentIterationsInFrame++;
+                this.CurrentMCTS = (this.CurrentMCTS + 1) % this.Runs;
             }
-            this.InProgress = false;
-            this.TotalProcessingTime += startTime;
-            return BestFinalAction(this.InitialNode);
+
+            if (this.CurrentIterations >= this.MaxIterations)
+                this.InProgress = false;
+
+            TotalProcessingTime += Time.realtimeSinceStartup - startTime;
+            //return BestFinalAction(this.InitialNode);
+            return BestAverageChildAction(this.InitialNodes);
         }
 
         protected MCTSNode Selection(MCTSNode initialNode)
@@ -107,28 +138,117 @@ namespace Assets.Scripts.IAJ.Unity.DecisionMaking.MCTS
 
         protected virtual Reward Playout(WorldModel initialPlayoutState)
         {
-            WorldModel newState = initialPlayoutState;
-            while (!newState.IsTerminal())
+            WorldModel currState = initialPlayoutState;
+
+            while (!currState.IsTerminal())
             {
-                var actions = newState.GetExecutableActions();
-                int index = this.RandomGenerator.Next(0, actions.Length);
-                Action action = actions[index];
-                action.ApplyActionEffects(newState);
-                newState.CalculateNextPlayer();
+                var actions = currState.GetExecutableActions();
+                if (actions.Length > 0)
+                {
+                    //currState = currState.GenerateChildWorldModel();
+                    int next = this.RandomGenerator.Next(0, actions.Length);
+                    currState = StochasticPlayout(actions[next], currState);
+                    currState.CalculateNextPlayer();
+                    //actions[next].ApplyActionEffects(currState);
+                    //currState.CalculateNextPlayer();
+                }
+                else
+                {
+                    break;
+                }
             }
             return new Reward
             {
-                PlayerID = newState.GetNextPlayer(),
-                Value = newState.GetScore()
+                PlayerID = currState.GetNextPlayer(),
+                Value = currState.GetScore()
             };
+        }
+
+        // Only worth running multiple playouts in case action is Sword Attack
+        protected virtual WorldModel StochasticPlayout(Action action, WorldModel currState)
+        {
+            if (action.Name.Equals("SwordAttack") && this.MaxPlayouts > 0)
+            {
+                WorldModel[] tests = new WorldModel[this.MaxPlayouts];
+                for (int i = 0; i < this.MaxPlayouts; i++)
+                {
+                    tests[i] = currState.GenerateChildWorldModel();
+                    action.ApplyActionEffects(tests[i]);
+                }
+
+                currState = AverageState(tests, (SwordAttack)action);
+            }
+            else
+            {
+                currState = currState.GenerateChildWorldModel();
+                action.ApplyActionEffects(currState);
+            }
+
+            return currState;
+        }
+
+        protected virtual WorldModel AverageState(WorldModel[] tests, SwordAttack enemy)
+        {
+            int hp = 0;
+            int shieldHp = 0;
+            int xp = 0;
+            int baseXp = 0;
+            int deadEnemies = 0;
+            bool enemyAlive = true;
+
+            for (int i = 0; i < this.MaxPlayouts; i++)
+            {
+                hp += (int)tests[i].GetProperty(Properties.HP);
+                shieldHp += (int)tests[i].GetProperty(Properties.ShieldHP);
+
+                if ((bool)tests[i].GetProperty(enemy.Target.name) == false)
+                {
+                    xp += (int)tests[i].GetProperty(Properties.XP);
+                    
+                    switch(enemy.Target.tag)
+                    {
+                        case "Skeleton":
+                            baseXp = xp - 3;
+                            break;
+                        case "Orc":
+                            baseXp = xp - 10;
+                            break;
+                        case "Dragon":
+                            baseXp = xp - 20;
+                            break;
+                    }
+
+                    deadEnemies++;
+                }
+            }
+
+            hp /= this.MaxPlayouts;
+            shieldHp /= this.MaxPlayouts;
+
+            if (deadEnemies > this.MaxPlayouts / 2)
+            {
+                xp /= deadEnemies;
+                enemyAlive = false;
+            }
+            else
+            {
+                xp = baseXp;
+            }
+
+            WorldModel average = tests[0];
+            average.SetProperty(Properties.HP, hp);
+            average.SetProperty(Properties.ShieldHP, shieldHp);
+            average.SetProperty(enemy.Target.name, enemyAlive);
+            average.SetProperty(Properties.XP, xp);
+            return average;
         }
 
         protected virtual void Backpropagate(MCTSNode node, Reward reward)
         {
             while (node != null)
             {
-                node.N = node.N + 1;
-                node.Q = node.Q + reward.Value;
+                node.N++;
+                node.Q += reward.Value;
                 node = node.Parent;
             }
         }
@@ -155,10 +275,10 @@ namespace Assets.Scripts.IAJ.Unity.DecisionMaking.MCTS
         {
             float maxValue = float.NegativeInfinity;
             MCTSNode best = null;
+            float score = 0;
             foreach (MCTSNode child in node.ChildNodes)
             {
-                float score = child.Q / child.N;
-                score += C * (float)Math.Sqrt(Math.Log10((double)(node.N)) / child.N);
+                score = child.Q / child.N + C * (float)Math.Sqrt(Math.Log(node.N) / child.N);
                 if (score > maxValue)
                 {
                     maxValue = score;
@@ -177,7 +297,6 @@ namespace Assets.Scripts.IAJ.Unity.DecisionMaking.MCTS
             float score = 0;
             foreach (MCTSNode child in node.ChildNodes)
             {
-                Debug.Log("Q: " + child.Q + "  N: " + child.N);
                 score = child.Q / child.N;
                 if (score > maxValue)
                 {
@@ -201,13 +320,52 @@ namespace Assets.Scripts.IAJ.Unity.DecisionMaking.MCTS
             this.BestActionSequence.Add(bestChild.Action);
             node = bestChild;
 
-            while(!node.State.IsTerminal())
+            while (!node.State.IsTerminal())
             {
-                Debug.Log("i am here");
                 bestChild = this.BestChild(node);
-                if (bestChild == null) break;
+                if (bestChild == null)
+                {
+                    break;
+                }
                 this.BestActionSequence.Add(bestChild.Action);
-                node = bestChild;    
+                node = bestChild;
+            }
+
+            return this.BestFirstChild.Action;
+        }
+
+        protected virtual Action BestAverageChildAction(MCTSNode[] nodes)
+        {
+            if (nodes[0].ChildNodes.Count == 0) return null;
+
+            List<float> results = new List<float>(nodes[0].ChildNodes.Count);
+
+            float bestReward = float.MinValue;
+
+            this.BestFirstChild = nodes[0].ChildNodes[0];
+
+            for (int i = 0; i < results.Count; i++) {
+
+                foreach (MCTSNode n in nodes)
+                {
+                    results[i] += n.ChildNodes[i].Q / n.ChildNodes[i].N;
+                }
+
+                results[i] /= results.Count;
+
+                if (results[i] > bestReward)
+                {
+                    bestReward = results[i];
+                    this.BestFirstChild = nodes[0].ChildNodes[i];
+                }
+            }
+
+            MCTSNode child = this.BestFirstChild;
+            this.BestActionSequence.Clear();
+            while (child != null)
+            {
+                this.BestActionSequence.Add(child.Action);
+                child = BestChild(child);
             }
 
             return this.BestFirstChild.Action;
